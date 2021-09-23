@@ -1,4 +1,4 @@
-import discord, logging, os, re, wget, asyncio, random
+import discord, logging, os, re, asyncio, random
 from datetime import datetime
 from dotenv import load_dotenv
 from requests import get
@@ -12,8 +12,8 @@ handler.setFormatter(
 logger.addHandler(handler)
 
 
-image_regex = "https:\/\/cdn.discordapp.com\/attachments\/[0-9]*\/[0-9]*\/([a-zA-Z0-9\_\-\.]*)\.(jpg|jpeg|png)$"
-video_regex = "https:\/\/cdn.discordapp.com\/attachments\/[0-9]*\/[0-9]*\/([a-zA-Z0-9\_\-\.]*)\.(mp4|avi|mov)$"
+image_regex = "https:\/\/cdn.discordapp.com\/attachments\/[0-9]*\/[0-9]*\/([a-z0-9\_\-\.]*)\.(jpg|jpeg|png)$"
+video_regex = "https:\/\/cdn.discordapp.com\/attachments\/[0-9]*\/[0-9]*\/([a-z0-9\_\-\.]*)\.(mp4|avi|mov)$"
 
 
 def isImage(content):
@@ -39,29 +39,40 @@ def formatDate(dt):
 def createFolder(server_name, channel_name):
     myDateTime = formatDate(datetime.now())
     folder = f"{os.getcwd()}\\{safeString(server_name)}_{safeString(channel_name)}_{myDateTime}\\"
-    os.mkdir(folder)
+    if not os.path.exists(folder):
+        os.mkdir(folder)
     return folder
 
 
-def downloadMedia(url, folder, file_name):
+async def downloadMedia(url, folder, file_name):
+    print(f"\nDownloading {url} as {file_name}")
     with open(folder + file_name, "wb") as file:
         response = get(url)
         file.write(response.content)
+    print(f"Download Successfull. {file_name}")
 
 
 def bytes_to_mb(byte):
-    return round(byte / 1024 / 1024, 2)
+    return round(byte / 1024 / 1024, 3)
 
 
 class MyClient(discord.Client):
     async def on_ready(self):
-        print("Logged on as {0}!".format(self.user))
+        print("{0} is ALIVE!".format(self.user.name))
 
     async def on_message(self, message):
         prefix = "`"
 
         if message.content[: len(prefix)] == prefix:
             command = message.content[len(prefix) :]
+
+            if message.author.bot:
+                print("Robots can not give me orders!")
+                return 0
+
+            print(
+                f"\n{formatDate(datetime.now())}:{str(message.author)}:{command}\n{'_' * 40}\n"
+            )
 
             if command == "ping":
                 m = f"Latency: {round(self.latency * 1000, 2)}ms"
@@ -77,49 +88,42 @@ class MyClient(discord.Client):
 
                 message_history = await message.channel.history(limit=limit).flatten()
 
-                print(f"\n{formatDate(datetime.now())}\n{'_' * 20}\n")
-
                 images, videos, others = {}, {}, {}
                 total_image_size, total_video_size, total_other_size = 0, 0, 0
 
                 counter = 1
                 for m in message_history:
-                    if m.attachments:
+                    if m.attachments and not m.author.bot:
                         print(f"{counter} - {m.author.name}: {m.attachments[0]}")
 
                         if isImage(m.attachments[0]):
                             print(f"image {bytes_to_mb(m.attachments[0].size)}mb")
                             total_image_size += m.attachments[0].size
                             images[str(m.attachments[0])] = "{}_{}.{}".format(
-                                formatDate(message.created_at),
-                                safeString(str(message.author)),
+                                formatDate(m.created_at),
+                                safeString(str(m.author)),
                                 str(m.attachments[0]).split(".")[-1],
                             )
                         elif isVideo(m.attachments[0]):
                             print(f"video {bytes_to_mb(m.attachments[0].size)}mb")
                             total_video_size += m.attachments[0].size
                             videos[str(m.attachments[0])] = "{}_{}.{}".format(
-                                formatDate(message.created_at),
-                                safeString(str(message.author)),
+                                formatDate(m.created_at),
+                                safeString(str(m.author)),
                                 str(m.attachments[0]).split(".")[-1],
                             )
                         else:
+                            print(f"other {bytes_to_mb(m.attachments[0].size)}mb")
                             total_other_size += m.attachments[0].size
-                            oth_ext = str(m.attachments[0]).split(".")[-1]
-                            print(oth_ext)
                             others[str(m.attachments[0])] = "{}_{}.{}".format(
-                                formatDate(message.created_at),
-                                safeString(str(message.author)),
-                                oth_ext,
+                                formatDate(m.created_at),
+                                safeString(str(m.author)),
+                                str(m.attachments[0]).split(".")[-1],
                             )
 
                         counter += 1
 
                 # Summary report message
-                print("Images:", images, " Size:", total_image_size)
-                print("Videos:", videos, " Size:", total_video_size)
-                print("Others:", others, " Size:", total_other_size)
-
                 colors = [0xFF0000, 0xFFEE00, 0x40FF00, 0x00BBFF, 0xFF00BB]
 
                 embedVar = discord.Embed(title="Report", color=random.choice(colors))
@@ -200,15 +204,15 @@ class MyClient(discord.Client):
                         try:
                             if selection == "Images":
                                 for url, name in images.items():
-                                    downloadMedia(url, folder, name)
+                                    await downloadMedia(url, folder, name)
                             elif selection == "Videos":
                                 for url, name in videos.items():
-                                    downloadMedia(url, folder, name)
+                                    await downloadMedia(url, folder, name)
                             elif selection == "All":
                                 for url, name in images.items():
-                                    downloadMedia(url, folder, name)
+                                    await downloadMedia(url, folder, name)
                                 for url, name in videos.items():
-                                    downloadMedia(url, folder, name)
+                                    await downloadMedia(url, folder, name)
                             else:
                                 print("An error occurred on selection!")
 
