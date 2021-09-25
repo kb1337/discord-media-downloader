@@ -2,8 +2,6 @@
 
 A discord bot that downloads images and videos from a selected channel. You have to be the admin of the server to use this bot.
 
-</br>
-
 ### Image extentions
 
 > jpg, jpeg, png
@@ -16,7 +14,6 @@ A discord bot that downloads images and videos from a selected channel. You have
 
 <img width="300" src="https://user-images.githubusercontent.com/73403802/134777697-00b300fe-0cea-4d65-9d38-f4702ce7e0ce.png" />
 
-</br>
 </br>
 
 ## Installation
