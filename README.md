@@ -72,6 +72,11 @@ DISCORD_TOKEN=YOUR_TOKEN
 </p>
 </details>
 
+```sh
+cd .\discord_media_downloader\
+poetry run python .\bot.py
+```
+
 ## Usage
 
 You can change the [prefix](https://github.com/kb1337/Discord-Media-Downloader/blob/8d71aeb105a5c6e50468c8f54b361dc97faba040/bot.py#L125). Default prefix:
