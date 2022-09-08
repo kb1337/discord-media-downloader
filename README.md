@@ -21,10 +21,11 @@ A discord bot that downloads images and videos from a selected channel. You have
 Install requirements for the bot.
 
 ```sh
-pip install -r .\requirements.txt
+poetry install
 ```
 
-## Setup Bot
+<details><summary>Setup Discord Bot</summary>
+<p>
 
 1- You need to create discord application in here https://discord.com/developers/applications
 
@@ -34,7 +35,7 @@ pip install -r .\requirements.txt
 
 ---
 
-`https://discord.com/api/oauth2/authorize?client_id=`YOUR_CLIENT_ID`&permissions=68672&scope=bot`
+https://<span></span>discord.com/api/oauth2/authorize?client_id=`YOUR_CLIENT_ID`&permissions=68672&scope=bot
 
 ---
 
@@ -68,20 +69,23 @@ DISCORD_TOKEN=YOUR_TOKEN
 
 </br>
 
+</p>
+</details>
+
 ## Usage
 
 You can change the [prefix](https://github.com/kb1337/Discord-Media-Downloader/blob/8d71aeb105a5c6e50468c8f54b361dc97faba040/bot.py#L125). Default prefix:
 
-> <strong>`</strong>
+> <strong>></strong>
 
 ### Bot Commands
 
 ```python
-`ping # Return bot's latency
+>ping # Return bot's latency
 ```
 
 ```python
-`info <limit> # Returns stats about messages and download options (default limit 5) (administrator permission needed)
+>info <limit> # Returns stats about messages and download options (default limit 5) (administrator permission needed)
 ```
 
 ## License
