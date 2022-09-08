@@ -13,7 +13,7 @@ logger = logging.getLogger("discord")
 logger.setLevel(logging.DEBUG)
 
 file_handler = logging.FileHandler(filename="discord.log", encoding="utf-8", mode="w")
-file_formatter = logging.Formatter("%(asctime)s:%(levelname)s:%(name)s: %(message)s")
+file_formatter = logging.Formatter("%(asctime)s:%(levelname)s:%(name)s:%(message)s")
 file_handler.setFormatter(file_formatter)
 logger.addHandler(file_handler)
 
@@ -31,7 +31,12 @@ def is_video(content: str) -> bool:
 
 
 def safe_string(text: str) -> str:
-    return "".join(char for char in str(text) if char.isalnum() or char in ["-", "_", "."])
+    result_text = ""
+    for char in str(text):
+        if char.isalnum() or char in ["-", "_", "."]:
+            result_text += char
+
+    return result_text
 
 
 def format_date(datetime_instance: datetime) -> str:
@@ -45,8 +50,8 @@ def create_folder(server_name: str, channel_name: str) -> str:
 
     server_name = safe_string(server_name)
     channel_name = safe_string(channel_name)
-    datetime_now = format_date(datetime.now())
-    folder_name = f"{server_name}_{channel_name}_{datetime_now}"
+    datetime_str = format_date(datetime.now())
+    folder_name = f"{server_name}_{channel_name}_{datetime_str}"
 
     path = os.path.join(downloads_folder, folder_name)
 
@@ -55,7 +60,7 @@ def create_folder(server_name: str, channel_name: str) -> str:
     return path
 
 
-async def download_media(url: str, folder: str, file_name: str):
+async def download_media(url: str, folder: str, file_name: str) -> None:
     logger.info("[*] Downloading %s as %s", url, file_name)
     path = os.path.join(folder, file_name)
     with open(path, "wb") as file:
@@ -69,13 +74,13 @@ def convert_byte_to_mb(byte: int) -> float:
 
 
 async def react_message(
-    command_message,
-    options,
-    options_message,
-    options_emojis,
-    images,
-    videos,
-    others,
+    command_message: discord.Message,
+    options: list[str],
+    options_message: discord.Message,
+    options_emojis: list[str],
+    images: dict[str, str],
+    videos: dict[str, str],
+    others: dict[str, str],
 ):
     # Check if the user is a command author.
     # Accept only emojis that the bot reacted.
@@ -99,7 +104,10 @@ async def react_message(
         status_message = await command_message.channel.send(f"Downloading {selection}...")
 
         # Download Medias
-        folder = create_folder(command_message.guild.name, command_message.channel.name)
+
+        server_name = command_message.guild.name if command_message.guild else "Server"
+        channel_name = command_message.channel.name if command_message.channel.name else "Channel"
+        folder = create_folder(server_name=server_name, channel_name=channel_name)
 
         if selection == "Images":
             for url, name in images.items():
@@ -107,10 +115,15 @@ async def react_message(
         elif selection == "Videos":
             for url, name in videos.items():
                 await download_media(url, folder, name)
+        elif selection == "Others":
+            for url, name in others.items():
+                await download_media(url, folder, name)
         elif selection == "All":
             for url, name in images.items():
                 await download_media(url, folder, name)
             for url, name in videos.items():
+                await download_media(url, folder, name)
+            for url, name in others.items():
                 await download_media(url, folder, name)
 
         await status_message.edit(content="Download Completed.", delete_after=10)
@@ -165,28 +178,30 @@ class MyClient(discord.Client):
                 counter = 1
                 for message in message_history:
                     if message.attachments and not message.author.bot:
-                        attachment = message.attachments[0]
-                        logger.info("[*] %d - %s: %s", counter, message.author.name, attachment)
+                        for attachment in message.attachments:
+                            logger.info("[*] %d - %s: %s", counter, message.author.name, attachment)
 
-                        file_extention = attachment.url.rsplit(".", maxsplit=1)[-1]
-                        author = safe_string(str(message.author))
-                        attachment_name = f"{format_date(message.created_at)}_{author}.{file_extention}"
-                        attachment_size = convert_byte_to_mb(attachment.size)
+                            file_extention = attachment.url.rsplit(".", maxsplit=1)[-1]
+                            author = safe_string(str(message.author))
+                            attachment_name = (
+                                f"{counter:04d}_{format_date(message.created_at)}_{author}.{file_extention}"
+                            )
+                            attachment_size = convert_byte_to_mb(attachment.size)
 
-                        if is_image(attachment):
-                            logger.info("[*] Image Size: %f mb", attachment_size)
-                            total_image_size += attachment.size
-                            images[str(attachment)] = attachment_name
-                        elif is_video(attachment):
-                            logger.info("[*] Video Size: %f mb", attachment_size)
-                            total_video_size += attachment.size
-                            videos[str(attachment)] = attachment_name
-                        else:
-                            logger.info("[*] Other Size: %f mb", attachment_size)
-                            total_other_size += attachment.size
-                            others[str(attachment)] = attachment_name
+                            if is_image(attachment):
+                                logger.info("[*] Image Size: %f mb", attachment_size)
+                                total_image_size += attachment.size
+                                images[str(attachment)] = attachment_name
+                            elif is_video(attachment):
+                                logger.info("[*] Video Size: %f mb", attachment_size)
+                                total_video_size += attachment.size
+                                videos[str(attachment)] = attachment_name
+                            else:
+                                logger.info("[*] Other Size: %f mb", attachment_size)
+                                total_other_size += attachment.size
+                                others[str(attachment)] = attachment_name
 
-                        counter += 1
+                            counter += 1
 
                 # Summary report message
                 colors = [0xFF0000, 0xFFEE00, 0x40FF00, 0x00BBFF, 0xFF00BB]
@@ -197,36 +212,45 @@ class MyClient(discord.Client):
                     value=f"{len(message_history)} messages found.",
                     inline=False,
                 )
+                if total_image_size > 0:
+                    media_size = convert_byte_to_mb(total_image_size)
+                    embed_message.add_field(
+                        name="Images",
+                        value=f"{len(images)} images found (Size: {media_size}mb)",
+                        inline=False,
+                    )
+                if total_video_size > 0:
+                    media_size = convert_byte_to_mb(total_video_size)
+                    embed_message.add_field(
+                        name="Videos",
+                        value=f"{len(videos)} videos found (Size: {media_size}mb)",
+                        inline=False,
+                    )
+                if total_other_size > 0:
+                    media_size = convert_byte_to_mb(total_other_size)
+                    embed_message.add_field(
+                        name="Others",
+                        value=f"{len(others)} other type of medias found (Size: {media_size}mb)",
+                        inline=False,
+                    )
                 embed_message.add_field(
-                    name="Images",
-                    value=f"{len(images)} images found. (Size: {convert_byte_to_mb(total_image_size)}mb)"
-                    if total_image_size > 0
-                    else "No image found.",
-                    inline=False,
-                )
-                embed_message.add_field(
-                    name="Videos",
-                    value=f"{len(videos)} videos found. (Size: {convert_byte_to_mb(total_video_size)}mb)"
-                    if total_video_size > 0
-                    else "No video found.",
-                    inline=False,
-                )
-                embed_message.add_field(
-                    name="Total Size of Medias (Image/Video)",
-                    value=f"{convert_byte_to_mb((total_image_size + total_video_size))}mb",
+                    name="Total Size of Medias",
+                    value=f"{convert_byte_to_mb((total_image_size + total_video_size + total_other_size))}mb",
                     inline=False,
                 )
                 await message.channel.send(embed=embed_message)
 
                 # Options (Images, Videos, All) message
-                emojis = ["1️⃣", "2️⃣", "3️⃣"]
+                emojis = ["1️⃣", "2️⃣", "3️⃣", "4️⃣"]
                 options = []
 
                 if total_image_size > 0:
                     options.append("Images")
                 if total_video_size > 0:
                     options.append("Videos")
-                if len(options) == 2:
+                if total_other_size > 0:
+                    options.append("Others")
+                if len(options) > 1:
                     options.append("All")
 
                 if options:
