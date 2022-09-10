@@ -12,7 +12,7 @@ from dotenv import load_dotenv
 logger = logging.getLogger("discord")
 logger.setLevel(logging.DEBUG)
 
-file_handler = logging.FileHandler(filename="discord.log", encoding="utf-8", mode="w")
+file_handler = logging.FileHandler(filename="discord.log", encoding="utf-8")
 file_formatter = logging.Formatter("%(asctime)s:%(levelname)s:%(name)s:%(message)s")
 file_handler.setFormatter(file_formatter)
 logger.addHandler(file_handler)
@@ -153,7 +153,7 @@ class MyClient(discord.Client):
                 await message.channel.send(f"Latency: {latency}ms")
                 logger.info("[+] Latency: %f ms", latency)
 
-            elif command.startswith("info"):
+            elif command.startswith("scan"):
                 if not is_admin:
                     await message.reply("This is admin only command.", delete_after=10)
                     logger.info("[-] Unauthorized")
@@ -179,7 +179,7 @@ class MyClient(discord.Client):
                 for message in message_history:
                     if message.attachments and not message.author.bot:
                         for attachment in message.attachments:
-                            logger.info("[*] %d - %s: %s", counter, message.author.name, attachment)
+                            logger.debug("[*] %d - %s: %s", counter, message.author.name, attachment)
 
                             file_extention = attachment.url.rsplit(".", maxsplit=1)[-1]
                             author = safe_string(str(message.author))
@@ -189,19 +189,24 @@ class MyClient(discord.Client):
                             attachment_size = convert_byte_to_mb(attachment.size)
 
                             if is_image(attachment):
-                                logger.info("[*] Image Size: %f mb", attachment_size)
+                                logger.debug("[*] Image Size: %f mb", attachment_size)
                                 total_image_size += attachment.size
                                 images[str(attachment)] = attachment_name
                             elif is_video(attachment):
-                                logger.info("[*] Video Size: %f mb", attachment_size)
+                                logger.debug("[*] Video Size: %f mb", attachment_size)
                                 total_video_size += attachment.size
                                 videos[str(attachment)] = attachment_name
                             else:
-                                logger.info("[*] Other Size: %f mb", attachment_size)
+                                logger.debug("[*] Other Size: %f mb", attachment_size)
                                 total_other_size += attachment.size
                                 others[str(attachment)] = attachment_name
 
                             counter += 1
+
+                logger.info("[+] %d images, %d videos, %d others", len(images), len(videos), len(others))
+                logger.info("[+] Total Image Size: %f mb", convert_byte_to_mb(total_image_size))
+                logger.info("[+] Total Video Size: %f mb", convert_byte_to_mb(total_video_size))
+                logger.info("[+] Total Other Size: %f mb", convert_byte_to_mb(total_other_size))
 
                 # Summary report message
                 colors = [0xFF0000, 0xFFEE00, 0x40FF00, 0x00BBFF, 0xFF00BB]
