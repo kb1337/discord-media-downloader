@@ -73,62 +73,6 @@ def convert_byte_to_mb(byte: int) -> float:
     return round(byte / 1024 / 1024, 3)
 
 
-async def react_message(
-    command_message: discord.Message,
-    options: list[str],
-    options_message: discord.Message,
-    options_emojis: list[str],
-    images: dict[str, str],
-    videos: dict[str, str],
-    others: dict[str, str],
-):
-    # Check if the user is a command author.
-    # Accept only emojis that the bot reacted.
-    # For example, if the bot reacted only '1️⃣' emoji, then the bot accept only '1️⃣' emoji.
-    def check(reaction, user):
-        return (
-            reaction.message.id == options_message.id
-            and user == command_message.author
-            and str(reaction.emoji) in options_emojis
-        )
-
-    # The bot waits for the author to choose option.
-    try:
-        reaction, r_user = await client.wait_for("reaction_add", timeout=15.0, check=check)
-    except asyncio.TimeoutError:
-        await options_message.delete()
-    else:
-        # After author choose option
-        await options_message.delete()
-        selection = options[options_emojis.index(str(reaction))]
-        status_message = await command_message.channel.send(f"Downloading {selection}...")
-
-        # Download Medias
-
-        server_name = command_message.guild.name if command_message.guild else "Server"
-        channel_name = command_message.channel.name if command_message.channel.name else "Channel"
-        folder = create_folder(server_name=server_name, channel_name=channel_name)
-
-        if selection == "Images":
-            for url, name in images.items():
-                await download_media(url, folder, name)
-        elif selection == "Videos":
-            for url, name in videos.items():
-                await download_media(url, folder, name)
-        elif selection == "Others":
-            for url, name in others.items():
-                await download_media(url, folder, name)
-        elif selection == "All":
-            for url, name in images.items():
-                await download_media(url, folder, name)
-            for url, name in videos.items():
-                await download_media(url, folder, name)
-            for url, name in others.items():
-                await download_media(url, folder, name)
-
-        await status_message.edit(content="Download Completed.", delete_after=10)
-
-
 class MyClient(discord.Client):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -221,26 +165,28 @@ class MyClient(discord.Client):
                     media_size = convert_byte_to_mb(total_image_size)
                     embed_message.add_field(
                         name="Images",
-                        value=f"{len(images)} images found (Size: {media_size}mb)",
+                        value=f"{len(images)} images found. (Size: {media_size}mb)",
                         inline=False,
                     )
                 if total_video_size > 0:
                     media_size = convert_byte_to_mb(total_video_size)
                     embed_message.add_field(
                         name="Videos",
-                        value=f"{len(videos)} videos found (Size: {media_size}mb)",
+                        value=f"{len(videos)} videos found. (Size: {media_size}mb)",
                         inline=False,
                     )
                 if total_other_size > 0:
                     media_size = convert_byte_to_mb(total_other_size)
                     embed_message.add_field(
                         name="Others",
-                        value=f"{len(others)} other type of medias found (Size: {media_size}mb)",
+                        value=f"{len(others)} other type of medias found. (Size: {media_size}mb)",
                         inline=False,
                     )
+
+                total_media_size = total_image_size + total_video_size + total_other_size
                 embed_message.add_field(
                     name="Total Size of Medias",
-                    value=f"{convert_byte_to_mb((total_image_size + total_video_size + total_other_size))}mb",
+                    value=f"{convert_byte_to_mb(total_media_size)}mb",
                     inline=False,
                 )
                 await message.channel.send(embed=embed_message)
@@ -272,15 +218,68 @@ class MyClient(discord.Client):
                     options_emojis = [emojis[i] for i in range(len(options))]
 
                     # Handles multiple commands at the same time.
-                    await react_message(
+                    emoji = await self.react_message(
                         message,
-                        options,
                         options_message,
                         options_emojis,
-                        images,
-                        videos,
-                        others,
                     )
+
+                    if not emoji:
+                        await options_message.delete()
+                        return 0
+
+                    # After author choose option
+                    selection = options[options_emojis.index(emoji)]
+                    status_message = await options_message.edit(content=f"Downloading {selection}...")
+
+                    # Download Medias
+
+                    server_name = options_message.guild.name if options_message.guild else "Server"
+                    channel_name = options_message.channel.name if options_message.channel.name else "Channel"
+                    folder = create_folder(server_name=server_name, channel_name=channel_name)
+
+                    if selection == "Images":
+                        for url, name in images.items():
+                            await download_media(url, folder, name)
+                    elif selection == "Videos":
+                        for url, name in videos.items():
+                            await download_media(url, folder, name)
+                    elif selection == "Others":
+                        for url, name in others.items():
+                            await download_media(url, folder, name)
+                    elif selection == "All":
+                        for url, name in images.items():
+                            await download_media(url, folder, name)
+                        for url, name in videos.items():
+                            await download_media(url, folder, name)
+                        for url, name in others.items():
+                            await download_media(url, folder, name)
+
+                    await status_message.edit(content="Download Completed.", delete_after=10)
+
+    async def react_message(
+        self,
+        command_message: discord.Message,
+        options_message: discord.Message,
+        options_emojis: list[str],
+    ) -> str:
+        # Check if the user is a command author.
+        # Accept only emojis that the bot reacted
+        def check(reaction, user):
+            return (
+                reaction.message.id == options_message.id
+                and user == command_message.author
+                and str(reaction.emoji) in options_emojis
+            )
+
+        # The bot waits for the author to choose option.
+        try:
+            reaction, *_ = await client.wait_for("reaction_add", timeout=15.0, check=check)
+        except asyncio.TimeoutError:
+            logger.info("[-] User didn't react in time.")
+            return ""
+        else:
+            return reaction.emoji
 
 
 if __name__ == "__main__":
