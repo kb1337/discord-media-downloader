@@ -82,13 +82,13 @@ class MyClient(discord.Client):
         logger.info("[*] %s is ALIVE!", self.user.name)
 
     async def on_message(self, message):
-        if message.content[: len(self.prefix)] == self.prefix:
-            command = message.content[len(self.prefix) :]
+        if message.content.startswith(self.prefix):
+            command = message.content.removeprefix(self.prefix)
             is_admin = message.author.guild_permissions.administrator
 
             if message.author.bot:
                 logger.info("[-] Robots can not give me orders!")
-                return 0
+                return
 
             logger.info("[*] %s: %s: %s", format_date(datetime.now()), message.author, command)
 
@@ -101,7 +101,7 @@ class MyClient(discord.Client):
                 if not is_admin:
                     await message.reply("This is admin only command.", delete_after=10)
                     logger.info("[-] Unauthorized")
-                    return 0
+                    return
 
                 number_of_messages = (  # number of messages (newest to oldest)
                     int(command.split()[1])
@@ -226,7 +226,7 @@ class MyClient(discord.Client):
 
                     if not emoji:
                         await options_message.delete()
-                        return 0
+                        return
 
                     # After author choose option
                     selection = options[options_emojis.index(emoji)]
