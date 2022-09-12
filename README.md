@@ -1,5 +1,7 @@
 # Discord Media Downloader
 
+[![pre-commit.ci status](https://results.pre-commit.ci/badge/github/kb1337/discord-media-downloader/main.svg)](https://results.pre-commit.ci/latest/github/kb1337/discord-media-downloader/main)
+
 A discord bot that downloads images and videos from a selected channel. You have to be the admin of the server to use this bot.
 
 ### Image extentions
@@ -79,9 +81,7 @@ poetry run python .\bot.py
 
 ## Usage
 
-You can change the [prefix](https://github.com/kb1337/Discord-Media-Downloader/blob/8d71aeb105a5c6e50468c8f54b361dc97faba040/bot.py#L125). Default prefix:
-
-> <strong>></strong>
+- Default prefix: `>`
 
 ### Bot Commands
 
@@ -90,7 +90,7 @@ You can change the [prefix](https://github.com/kb1337/Discord-Media-Downloader/b
 ```
 
 ```python
->info <limit> # Returns stats about messages and download options (default limit 5) (administrator permission needed)
+>scan <limit> # Returns stats about messages and download options (default limit 5) (administrator permission needed)
 ```
 
 ## License
