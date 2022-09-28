@@ -2,7 +2,7 @@
 name = "discord-media-downloader"
 version = "0.1.0"
 description = ""
-authors = ["Kadir Burak Gündüz <73403802+kb1337@users.noreply.github.com>"]
+authors = ["Kadir Burak Gündüz <kadir.burak.gunduz@gmail.com>"]
 license = "MIT"
 
 [tool.poetry.dependencies]
