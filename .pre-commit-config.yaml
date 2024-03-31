@@ -37,8 +37,3 @@ repos:
       - id: mypy
         args: [--no-strict-optional, --ignore-missing-imports]
         additional_dependencies: [requests==2.28.1]
-
-ci:
-  autoupdate_schedule: weekly
-  skip: []
-  submodules: false
